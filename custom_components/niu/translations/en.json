@@ -1,5 +1,5 @@
 {
-  "title": "小牛电动车",
+  "title": "NIU Electric Bike",
   "config": {
     "abort": {
       "already_configured": "Device is already configured",
@@ -17,7 +17,7 @@
         "data": {
           "username": "Username/Email",
           "password": "Password",
-          "scooter_id": "Scooter ID"
+          "scooter_id": "Vehicle index"
         },
         "data_description": {},
         "description": "Configure your NIU electric bike.",
