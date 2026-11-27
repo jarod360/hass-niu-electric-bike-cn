@@ -11,18 +11,15 @@ import requests
 from .const import (
     APP_ID,
     APP_VERSION,
-    DEFAULT_REGION,
+    API_BASE_URL,
+    ACCOUNT_BASE_URL,
     LOGIN_URI,
     MOTOINFO_ALL_API_URI,
     MOTOINFO_LIST_API_URI,
     MOTOR_BATTERY_API_URI,
     MOTOR_INDEX_API_URI,
-    REGIONS,
     THUMB_CDN_HOST,
     TRACK_LIST_API_URI,
-    build_proxy_url,
-    mask_proxy,
-    scrub_secrets,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,74 +39,22 @@ class NiuConnectionError(Exception):
 
 
 class NiuAPI:
-    """NIU API client。
-
-    与原版的区别：
-    1. 所有请求走同一个 requests.Session，代理只作用于本集成，
-       不会影响 HA 其他集成的出站流量。
-    2. 主机名、UA、坐标系按区服（cn / intl）取，不再写死。
-    3. 六份重复的 try/except 收敛成一个 _request()。
-    """
-
-    def __init__(
-        self,
-        username: str,
-        password: str,
-        region: str = DEFAULT_REGION,
-        proxy: str | None = None,
-        language: str | None = None,
-        timezone: str | None = None,
-        proxy_username: str | None = None,
-        proxy_password: str | None = None,
-    ) -> None:
-        """初始化。
-
-        proxy 形如 1.2.3.4:18443 / http://... / socks5h://...；
-        proxy_username / proxy_password 单独给时会被 URL 编码后拼进去，
-        因此密码可以包含 @ : / # 等特殊字符。
-        """
+    def __init__(self, username: str, password: str) -> None:
         self.username = username
         self.password = password
-        self.region = region if region in REGIONS else DEFAULT_REGION
-        self._cfg = REGIONS[self.region]
-        self.language = language or self._cfg["language"]
-        self.timezone = timezone or self._cfg["timezone"]
-        # 容错：老配置或手动改过 .storage 的情况下可能是 "1.2.3.4:8080" 这种裸地址
-        self._proxy_password = proxy_password or None
-        try:
-            self.proxy = build_proxy_url(proxy, proxy_username, proxy_password)
-        except ValueError as err:
-            # 注意这里不能打印 proxy 原值，可能含密码
-            _LOGGER.warning("代理地址无效（%s），按直连处理", err)
-            self.proxy = None
+        self.language = "zh-CN"
+        self.timezone = "Asia/Shanghai"
         self._token: str | None = None
-
         self._session = requests.Session()
-        # 关键：不读 HTTP_PROXY / HTTPS_PROXY 环境变量。
-        # 否则给 HA 容器设的全局代理会把这里的请求一起带走，
-        # 反过来说，这里配的代理也绝不会外溢到别的集成。
         self._session.trust_env = False
-        if self.proxy:
-            self._session.proxies = {"http": self.proxy, "https": self.proxy}
-
-    # ------------------------------------------------------------------
-    # 内部
-    # ------------------------------------------------------------------
-
-    def _scrub(self, err: object) -> str:
-        """异常消息落日志前先擦掉代理凭据。
-
-        urllib3 的报错里会原样带上完整代理 URL，包括密码。
-        """
-        return scrub_secrets(str(err), self.proxy, self._proxy_password)
 
     @property
     def account_base_url(self) -> str:
-        return self._cfg["account_base_url"]
+        return ACCOUNT_BASE_URL
 
     @property
     def api_base_url(self) -> str:
-        return self._cfg["api_base_url"]
+        return API_BASE_URL
 
     @property
     def _ua_full(self) -> str:
@@ -117,7 +62,7 @@ class NiuAPI:
         return (
             f"manager/{APP_VERSION} (android; IN2020 11);"
             f"lang={self.language};"
-            f"clientIdentifier={self._cfg['client_identifier']};"
+            f"clientIdentifier=Domestic;"
             f"timezone={self.timezone};"
             f"model=IN2020;deviceName=IN2020;ostype=android"
         )
@@ -125,7 +70,7 @@ class NiuAPI:
     @property
     def _ua_short(self) -> str:
         """轨迹接口用的简短 UA。"""
-        return f"manager/1.0.0 (identifier);clientIdentifier={self._cfg['client_identifier']}"
+        return f"manager/1.0.0 (identifier);clientIdentifier=Domestic"
 
     def _request(
         self,
@@ -149,12 +94,8 @@ class NiuAPI:
             response = self._session.request(
                 method, url, headers=headers, timeout=DEFAULT_TIMEOUT, **kwargs
             )
-        except requests.exceptions.ProxyError as err:
-            raise NiuConnectionError(
-                f"代理不可用 ({mask_proxy(self.proxy)}): {self._scrub(err)}"
-            ) from err
         except requests.exceptions.RequestException as err:
-            raise NiuConnectionError(f"请求 {url} 失败: {self._scrub(err)}") from err
+            raise NiuConnectionError(f"请求 {url} 失败 ({type(err).__name__})") from err
 
         if response.status_code in (401, 403):
             raise NiuAuthError(f"{url} 鉴权被拒 (HTTP {response.status_code})")
@@ -258,17 +199,9 @@ class NiuAPI:
         )
 
     def rewrite_thumb_url(self, url: str | None) -> str | None:
-        """把轨迹缩略图的 CDN 地址改写到当前区服可达的域名。
-
-        小牛返回的原始地址指向国内 CDN app-api.niucache.com，
-        国际服还要再把 /track/thumb/ 换成 /track/overseas/thumb/。
-        """
         if not url:
             return url
-        url = url.replace(THUMB_CDN_HOST, self._cfg["thumb_host"])
-        if self._cfg["thumb_overseas_path"]:
-            if "/track/thumb/" in url and "/track/overseas/thumb/" not in url:
-                url = url.replace("/track/thumb/", "/track/overseas/thumb/")
+        url = url.replace(THUMB_CDN_HOST, "app-api.niu.com")
         return url
 
     def close(self) -> None:

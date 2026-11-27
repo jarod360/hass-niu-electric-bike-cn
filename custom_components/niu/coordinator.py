@@ -17,24 +17,15 @@ from .api import NiuAPI, NiuAuthError, NiuConnectionError
 from .const import (
     CONF_MONITORED_VARIABLES,
     CONF_PASSWORD,
-    CONF_PROXY,
-    CONF_PROXY_PASSWORD,
-    CONF_PROXY_USERNAME,
-    CONF_REGION,
     CONF_SCAN_INTERVAL,
     CONF_SCOOTER_ID,
     CONF_USERNAME,
     DEFAULT_MONITORED_VARIABLES,
-    DEFAULT_PROXY,
-    DEFAULT_PROXY_PASSWORD,
-    DEFAULT_PROXY_USERNAME,
-    DEFAULT_REGION,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCOOTER_ID,
     MAX_BACKOFF_FACTOR,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
-    REGIONS,
     SENSOR_TYPE_BAT,
     SENSOR_TYPE_DIST,
     SENSOR_TYPE_MOTO,
@@ -45,7 +36,6 @@ from .const import (
     TIRE_SENSORS,
     TOKEN_MAX_AGE,
     get_conf,
-    mask_proxy,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,11 +53,6 @@ class NiuDataCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         """Initialize the coordinator."""
-        region = get_conf(config_entry, CONF_REGION, DEFAULT_REGION)
-        if region not in REGIONS:
-            _LOGGER.warning("未知区服 %s，回退到 %s", region, DEFAULT_REGION)
-            region = DEFAULT_REGION
-
         interval = int(get_conf(config_entry, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
         interval = max(MIN_SCAN_INTERVAL, min(MAX_SCAN_INTERVAL, interval))
 
@@ -79,27 +64,13 @@ class NiuDataCoordinator(DataUpdateCoordinator):
         )
 
         self.config_entry = config_entry
-        self.region = region
-        # 国内服返回火星坐标，需要转换；国际服不需要
-        self.gcj02: bool = REGIONS[region]["gcj02"]
 
         self._base_interval = interval
         self._fail_streak = 0
 
-        proxy = get_conf(config_entry, CONF_PROXY, DEFAULT_PROXY) or None
         self.api = NiuAPI(
             config_entry.data[CONF_USERNAME],
             config_entry.data[CONF_PASSWORD],
-            region=region,
-            proxy=proxy,
-            proxy_username=get_conf(
-                config_entry, CONF_PROXY_USERNAME, DEFAULT_PROXY_USERNAME
-            )
-            or None,
-            proxy_password=get_conf(
-                config_entry, CONF_PROXY_PASSWORD, DEFAULT_PROXY_PASSWORD
-            )
-            or None,
         )
 
         self.sn: str | None = None
@@ -114,13 +85,6 @@ class NiuDataCoordinator(DataUpdateCoordinator):
         self._data_moto_info: dict[str, Any] | None = None
         self._data_track_info: dict[str, Any] | None = None
 
-        _LOGGER.debug(
-            "NIU coordinator 初始化: region=%s interval=%ss proxy=%s",
-            region,
-            interval,
-            # 绝不能打印原始代理地址，可能含密码
-            mask_proxy(self.api.proxy),
-        )
 
     # ------------------------------------------------------------------
     # 退避
@@ -327,13 +291,23 @@ class NiuDataCoordinator(DataUpdateCoordinator):
 
         return latest.get(field)
 
+    def tire_attributes(self, field: str) -> dict[str, Any]:
+        wheel = self._data_tire.get(field.partition(".")[0])
+        if not isinstance(wheel, dict):
+            return {}
+        status = wheel.get("status")
+        attrs = {k: status[k] for k in ("paired", "connected") if k in status} if isinstance(status, dict) else {}
+        if wheel.get("lastupdate") is not None:
+            attrs["lastupdate"] = wheel["lastupdate"]
+        return attrs
+
     def get_tire_data(self, field: str) -> float | None:
         wheel, _, metric = field.partition(".")
         tire = self._data_tire.get(wheel)
         if not isinstance(tire, dict):
             return None
         status = tire.get("status")
-        if isinstance(status, dict) and any(status.get(k) in (False, 0) for k in ("paired", "connected")):
+        if isinstance(status, dict) and status.get("paired") in (False, 0):
             return None
         value = tire.get(metric)
         if isinstance(value, bool) or not isinstance(value, (int, float, str)):
@@ -342,7 +316,9 @@ class NiuDataCoordinator(DataUpdateCoordinator):
             value = float(value)
         except (ValueError, OverflowError):
             return None
-        return value if math.isfinite(value) else None
+        if not math.isfinite(value):
+            return None
+        return round(value, 2) if metric == "pressure" else value
 
     def get_data_by_type(self, sensor_type: str, field: str) -> Any:
         """按传感器分组分发到对应的取数方法。"""

@@ -6,30 +6,21 @@
       "reconfigure_successful": "重新配置成功"
     },
     "error": {
-      "cannot_connect": "无法连接到 NIU API。请检查区域选择、网络出口或代理设置",
+      "cannot_connect": "Configure your NIU electric bike.",
       "invalid_auth": "认证凭据无效",
       "unknown": "发生意外错误",
       "no_sensors_selected": "请至少选择一个传感器",
-      "invalid_sensors": "选择的传感器无效",
-      "invalid_proxy": "代理地址格式不正确。示例：1.2.3.4:18443 或 http://user:pass@1.2.3.4:18443，留空则直连"
+      "invalid_sensors": "选择的传感器无效"
     },
     "step": {
       "user": {
         "data": {
           "username": "用户名/邮箱",
           "password": "密码",
-          "scooter_id": "滑板车ID",
-          "region": "服务器区域",
-          "proxy": "代理地址（可选）",
-          "proxy_username": "代理用户名（可选）",
-          "proxy_password": "代理密码（可选）"
+          "scooter_id": "滑板车ID"
         },
-        "data_description": {
-          "region": "国内买的车选「中国大陆」，海外版选「国际」。账号分服，选错会认证失败",
-          "proxy": "形如 http://1.2.3.4:8080 或 socks5h://1.2.3.4:1080，留空则直连。仅本集成生效",
-          "proxy_password": "留空表示代理不需要认证。密码会被自动 URL 编码，可以包含 @ : / # 等特殊字符"
-        },
-        "description": "输入您的 NIU 账户凭据，选择服务器区域和要监控的滑板车。",
+        "data_description": {},
+        "description": "Configure your NIU electric bike.",
         "title": "NIU账户"
       },
       "sensors": {
@@ -46,17 +37,11 @@
       "reconfigure": {
         "data": {
           "username": "用户名/邮箱",
-          "password": "密码",
-          "region": "服务器区域",
-          "proxy": "代理地址（可选）",
-          "proxy_username": "代理用户名（可选）",
-          "proxy_password": "代理密码（可选）"
+          "password": "密码"
         },
-        "description": "重新配置您的 NIU 账户凭据、服务器区域和代理。",
+        "description": "Configure your NIU electric bike.",
         "title": "重新配置NIU账户",
-        "data_description": {
-          "proxy_password": "留空表示代理不需要认证。密码会被自动 URL 编码，可以包含 @ : / # 等特殊字符"
-        }
+        "data_description": {}
       },
       "reconfigure_sensors": {
         "data": {
@@ -73,16 +58,10 @@
       "init": {
         "data": {
           "monitored_variables": "要监控的传感器",
-          "scan_interval": "轮询间隔（秒）",
-          "proxy": "代理地址（可选）",
-          "proxy_username": "代理用户名（可选）",
-          "proxy_password": "代理密码（可选）"
+          "scan_interval": "轮询间隔（秒）"
         },
-        "data_description": {
-          "proxy": "改动后集成会自动重载。留空则直连",
-          "proxy_password": "留空表示代理不需要认证。密码会被自动 URL 编码，可以包含 @ : / # 等特殊字符"
-        },
-        "description": "调整传感器、轮询间隔和代理设置。切换服务器区域请使用「重新配置」。",
+        "data_description": {},
+        "description": "Configure your NIU electric bike.",
         "title": "NIU集成选项"
       }
     }

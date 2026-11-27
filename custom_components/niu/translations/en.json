@@ -6,30 +6,21 @@
       "reconfigure_successful": "Reconfiguration successful"
     },
     "error": {
-      "cannot_connect": "Failed to connect to NIU API. Check the region, network egress or proxy settings",
+      "cannot_connect": "Configure your NIU electric bike.",
       "invalid_auth": "Invalid authentication credentials",
       "unknown": "Unexpected error occurred",
       "no_sensors_selected": "Select at least one sensor",
-      "invalid_sensors": "Invalid sensor selection",
-      "invalid_proxy": "Malformed proxy address. Example: 1.2.3.4:18443 or http://user:pass@1.2.3.4:18443. Leave empty for a direct connection"
+      "invalid_sensors": "Invalid sensor selection"
     },
     "step": {
       "user": {
         "data": {
           "username": "Username/Email",
           "password": "Password",
-          "scooter_id": "Scooter ID",
-          "region": "Server region",
-          "proxy": "Proxy URL (optional)",
-          "proxy_username": "Proxy username (optional)",
-          "proxy_password": "Proxy password (optional)"
+          "scooter_id": "Scooter ID"
         },
-        "data_description": {
-          "region": "Accounts are region-bound. Choose the one matching the app you use",
-          "proxy": "e.g. http://1.2.3.4:8080 or socks5h://1.2.3.4:1080. Leave empty for direct connection. Applies to this integration only",
-          "proxy_password": "Leave empty if the proxy needs no authentication. The password is URL-encoded automatically, so special characters are fine"
-        },
-        "description": "Enter your NIU account credentials, pick the server region and the scooter to monitor.",
+        "data_description": {},
+        "description": "Configure your NIU electric bike.",
         "title": "NIU Account"
       },
       "sensors": {
@@ -46,17 +37,11 @@
       "reconfigure": {
         "data": {
           "username": "Username/Email",
-          "password": "Password",
-          "region": "Server region",
-          "proxy": "Proxy URL (optional)",
-          "proxy_username": "Proxy username (optional)",
-          "proxy_password": "Proxy password (optional)"
+          "password": "Password"
         },
-        "description": "Reconfigure your NIU credentials, server region and proxy.",
+        "description": "Configure your NIU electric bike.",
         "title": "Reconfigure NIU Account",
-        "data_description": {
-          "proxy_password": "Leave empty if the proxy needs no authentication. The password is URL-encoded automatically, so special characters are fine"
-        }
+        "data_description": {}
       },
       "reconfigure_sensors": {
         "data": {
@@ -73,16 +58,11 @@
       "init": {
         "data": {
           "monitored_variables": "Sensors to monitor",
-          "scan_interval": "Polling interval (seconds)",
-          "proxy": "Proxy URL (optional)",
-          "proxy_username": "Proxy username (optional)",
-          "proxy_password": "Proxy password (optional)"
+          "scan_interval": "Polling interval (seconds)"
         },
-        "description": "Adjust sensors, polling interval and proxy. Use Reconfigure to switch server region.",
+        "description": "Configure your NIU electric bike.",
         "title": "NIU Integration Options",
-        "data_description": {
-          "proxy_password": "Leave empty if the proxy needs no authentication. The password is URL-encoded automatically, so special characters are fine"
-        }
+        "data_description": {}
       }
     }
   }

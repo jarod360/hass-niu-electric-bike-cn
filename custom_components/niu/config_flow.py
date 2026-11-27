@@ -21,59 +21,29 @@ from homeassistant.helpers import selector
 from .api import NiuAPI, NiuAuthError, NiuConnectionError
 from .const import (
     AVAILABLE_SENSORS,
+    SENSOR_NAMES_ZH,
     CONF_MONITORED_VARIABLES,
-    CONF_PROXY,
-    CONF_PROXY_PASSWORD,
-    CONF_PROXY_USERNAME,
-    CONF_REGION,
     CONF_SCAN_INTERVAL,
     CONF_SCOOTER_ID,
     DEFAULT_MONITORED_VARIABLES,
-    DEFAULT_PROXY,
-    DEFAULT_PROXY_PASSWORD,
-    DEFAULT_PROXY_USERNAME,
-    DEFAULT_REGION,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SCOOTER_ID,
     DOMAIN,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
-    REGIONS,
-    build_proxy_url,
     get_conf,
-    normalize_proxy,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def _region_selector() -> selector.SelectSelector:
-    """区服下拉框。默认国内服。"""
-    return selector.SelectSelector(
-        selector.SelectSelectorConfig(
-            options=[
-                selector.SelectOptionDict(value=key, label=cfg["label"])
-                for key, cfg in REGIONS.items()
-            ],
-            mode=selector.SelectSelectorMode.DROPDOWN,
-        )
-    )
-
-
 def _sensors_selector() -> selector.SelectSelector:
     return selector.SelectSelector(
         selector.SelectSelectorConfig(
-            options=AVAILABLE_SENSORS,
+            options=[selector.SelectOptionDict(value=k, label=SENSOR_NAMES_ZH[k]) for k in AVAILABLE_SENSORS],
             multiple=True,
             mode=selector.SelectSelectorMode.DROPDOWN,
         )
-    )
-
-
-def _password_selector() -> selector.TextSelector:
-    """掩码输入框，避免代理密码在界面上明文显示。"""
-    return selector.TextSelector(
-        selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
     )
 
 
@@ -94,10 +64,6 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
         vol.Optional(CONF_SCOOTER_ID, default=DEFAULT_SCOOTER_ID): int,
-        vol.Optional(CONF_REGION, default=DEFAULT_REGION): _region_selector(),
-        vol.Optional(CONF_PROXY, default=DEFAULT_PROXY): str,
-        vol.Optional(CONF_PROXY_USERNAME, default=DEFAULT_PROXY_USERNAME): str,
-        vol.Optional(CONF_PROXY_PASSWORD, default=DEFAULT_PROXY_PASSWORD): _password_selector(),
     }
 )
 
@@ -122,33 +88,11 @@ def _validate_sensors(monitored_variables: list[str]) -> str | None:
     return None
 
 
-def _clean_proxy(user_input: dict[str, Any]) -> str:
-    """规范化代理地址并校验能否与凭据拼成合法 URL，非法时抛 InvalidProxy。
-
-    返回的是不含凭据的地址；账号密码单独存，交给 NiuAPI 编码后拼接。
-    """
-    try:
-        address = normalize_proxy(user_input.get(CONF_PROXY)) or DEFAULT_PROXY
-        # 提前试拼一次，把格式问题挡在表单这一层
-        build_proxy_url(
-            address,
-            user_input.get(CONF_PROXY_USERNAME),
-            user_input.get(CONF_PROXY_PASSWORD),
-        )
-        return address
-    except ValueError as err:
-        raise InvalidProxy(str(err)) from err
-
-
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     api = NiuAPI(
         data[CONF_USERNAME],
         data[CONF_PASSWORD],
-        region=data.get(CONF_REGION, DEFAULT_REGION),
-        proxy=data.get(CONF_PROXY) or None,  # NiuAPI 内部会再规约一次
-        proxy_username=data.get(CONF_PROXY_USERNAME) or None,
-        proxy_password=data.get(CONF_PROXY_PASSWORD) or None,
     )
 
     try:
@@ -170,7 +114,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         scooter_name = items[scooter_id]["scooter_name"]
 
         return {
-            "title": f"NIU Scooter - {scooter_name}",
+            "title": f"小牛电动车 - {scooter_name}",
             "token": token,
             "scooter_id": scooter_id,
             "scooter_name": scooter_name,
@@ -209,12 +153,9 @@ class NiuConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             try:
-                user_input[CONF_PROXY] = _clean_proxy(user_input)
                 info = await validate_input(self.hass, user_input)
                 self._input_data = {**user_input, **info}
                 return await self.async_step_sensors()
-            except InvalidProxy:
-                errors[CONF_PROXY] = "invalid_proxy"
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -247,14 +188,6 @@ class NiuConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_USERNAME: self._input_data[CONF_USERNAME],
                     CONF_PASSWORD: self._input_data[CONF_PASSWORD],
                     CONF_SCOOTER_ID: self._input_data[CONF_SCOOTER_ID],
-                    CONF_REGION: self._input_data.get(CONF_REGION, DEFAULT_REGION),
-                    CONF_PROXY: self._input_data.get(CONF_PROXY, DEFAULT_PROXY),
-                    CONF_PROXY_USERNAME: self._input_data.get(
-                        CONF_PROXY_USERNAME, DEFAULT_PROXY_USERNAME
-                    ),
-                    CONF_PROXY_PASSWORD: self._input_data.get(
-                        CONF_PROXY_PASSWORD, DEFAULT_PROXY_PASSWORD
-                    ),
                     CONF_MONITORED_VARIABLES: monitored_variables,
                     CONF_SCAN_INTERVAL: int(
                         user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
@@ -278,14 +211,10 @@ class NiuConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             try:
-                user_input[CONF_PROXY] = _clean_proxy(user_input)
                 user_input[CONF_SCOOTER_ID] = config_entry.data[CONF_SCOOTER_ID]
                 await validate_input(self.hass, user_input)
-                # 注意顺序：user_input 在后，新填的凭据/区服/代理才能覆盖旧值
                 self._input_data = {**config_entry.data, **user_input}
                 return await self.async_step_reconfigure_sensors()
-            except InvalidProxy:
-                errors[CONF_PROXY] = "invalid_proxy"
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -302,26 +231,6 @@ class NiuConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_USERNAME, default=config_entry.data[CONF_USERNAME]
                     ): str,
                     vol.Required(CONF_PASSWORD): str,
-                    vol.Optional(
-                        CONF_REGION,
-                        default=get_conf(config_entry, CONF_REGION, DEFAULT_REGION),
-                    ): _region_selector(),
-                    vol.Optional(
-                        CONF_PROXY,
-                        default=get_conf(config_entry, CONF_PROXY, DEFAULT_PROXY),
-                    ): str,
-                    vol.Optional(
-                        CONF_PROXY_USERNAME,
-                        default=get_conf(
-                            config_entry, CONF_PROXY_USERNAME, DEFAULT_PROXY_USERNAME
-                        ),
-                    ): str,
-                    vol.Optional(
-                        CONF_PROXY_PASSWORD,
-                        default=get_conf(
-                            config_entry, CONF_PROXY_PASSWORD, DEFAULT_PROXY_PASSWORD
-                        ),
-                    ): _password_selector(),
                 }
             ),
             errors=errors,
@@ -347,14 +256,6 @@ class NiuConfigFlow(ConfigFlow, domain=DOMAIN):
                         **config_entry.data,
                         CONF_USERNAME: self._input_data[CONF_USERNAME],
                         CONF_PASSWORD: self._input_data[CONF_PASSWORD],
-                        CONF_REGION: self._input_data.get(CONF_REGION, DEFAULT_REGION),
-                        CONF_PROXY: self._input_data.get(CONF_PROXY, DEFAULT_PROXY),
-                        CONF_PROXY_USERNAME: self._input_data.get(
-                            CONF_PROXY_USERNAME, DEFAULT_PROXY_USERNAME
-                        ),
-                        CONF_PROXY_PASSWORD: self._input_data.get(
-                            CONF_PROXY_PASSWORD, DEFAULT_PROXY_PASSWORD
-                        ),
                         CONF_MONITORED_VARIABLES: monitored_variables,
                         CONF_SCAN_INTERVAL: int(
                             user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
@@ -390,9 +291,6 @@ class NiuConfigFlow(ConfigFlow, domain=DOMAIN):
 class NiuOptionsFlowHandler(OptionsFlow):
     """Handle NIU options.
 
-    传感器勾选、轮询间隔、代理地址都能在这里改，改完自动重载。
-    区服因为会影响坐标系和实体语义，只在「重新配置」里改。
-
     注意这里没有 __init__：HA 2024.11 起 OptionsFlow.config_entry 由框架
     以只读属性形式注入，基座那种 `self.config_entry = config_entry` 的写法
     先是告警，在更新的 HA 上会直接抛 AttributeError。
@@ -405,11 +303,6 @@ class NiuOptionsFlowHandler(OptionsFlow):
         if user_input is not None:
             monitored_variables = user_input.get(CONF_MONITORED_VARIABLES, [])
             error = _validate_sensors(monitored_variables)
-            try:
-                proxy = _clean_proxy(user_input)
-            except InvalidProxy:
-                errors[CONF_PROXY] = "invalid_proxy"
-                proxy = DEFAULT_PROXY
             if error:
                 errors["base"] = error
             elif not errors:
@@ -419,13 +312,6 @@ class NiuOptionsFlowHandler(OptionsFlow):
                         CONF_MONITORED_VARIABLES: monitored_variables,
                         CONF_SCAN_INTERVAL: int(
                             user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-                        ),
-                        CONF_PROXY: proxy,
-                        CONF_PROXY_USERNAME: user_input.get(
-                            CONF_PROXY_USERNAME, DEFAULT_PROXY_USERNAME
-                        ),
-                        CONF_PROXY_PASSWORD: user_input.get(
-                            CONF_PROXY_PASSWORD, DEFAULT_PROXY_PASSWORD
                         ),
                     },
                 )
@@ -448,22 +334,6 @@ class NiuOptionsFlowHandler(OptionsFlow):
                         self.config_entry, CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
                     ),
                 ): _interval_selector(),
-                vol.Optional(
-                    CONF_PROXY,
-                    default=get_conf(self.config_entry, CONF_PROXY, DEFAULT_PROXY),
-                ): str,
-                vol.Optional(
-                    CONF_PROXY_USERNAME,
-                    default=get_conf(
-                        self.config_entry, CONF_PROXY_USERNAME, DEFAULT_PROXY_USERNAME
-                    ),
-                ): str,
-                vol.Optional(
-                    CONF_PROXY_PASSWORD,
-                    default=get_conf(
-                        self.config_entry, CONF_PROXY_PASSWORD, DEFAULT_PROXY_PASSWORD
-                    ),
-                ): _password_selector(),
             }
         )
 
@@ -478,7 +348,3 @@ class CannotConnect(HomeAssistantError):
 
 class InvalidAuth(HomeAssistantError):
     """Error to indicate there is invalid auth."""
-
-
-class InvalidProxy(HomeAssistantError):
-    """Error to indicate the proxy address is malformed."""

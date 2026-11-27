@@ -24,7 +24,8 @@ from .const import (
     DEFAULT_MONITORED_VARIABLES,
     DEFAULT_SCOOTER_ID,
     DOMAIN,
-    REGIONS,
+    ACCOUNT_BASE_URL,
+    SENSOR_NAMES_ZH,
     SENSOR_TYPE_BAT,
     SENSOR_TYPE_DIST,
     SENSOR_TYPE_MOTO,
@@ -367,14 +368,15 @@ class NiuSensor(SensorEntity):
 
         # 实体 ID 保持与原版一致，避免升级后历史数据断档
         self._attr_unique_id = f"niu_scooter_{scooter_id}_{sensor_id}"
-        self._attr_name = f"NIU Scooter {scooter_id} {sensor_name}"
+        self._attr_has_entity_name = True
+        self._attr_name = SENSOR_NAMES_ZH[sensor_name]
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"niu_scooter_{scooter_id}_{coordinator.sn}")},
-            name=f"NIU Scooter {scooter_id}",
+            name=f"小牛电动车 {scooter_id}",
             manufacturer="NIU",
-            model="Electric Scooter",
-            configuration_url=REGIONS[coordinator.region]["account_base_url"],
+            model="电动车",
+            configuration_url=ACCOUNT_BASE_URL,
         )
 
     @property
@@ -406,8 +408,6 @@ class NiuSensor(SensorEntity):
             return None
         if lng_f == 0.0 and lat_f == 0.0:
             return None
-        if not self.coordinator.gcj02:
-            return lng_f, lat_f
         return gcj02_to_wgs84(lng_f, lat_f)
 
     @property
@@ -436,6 +436,8 @@ class NiuSensor(SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return entity specific state attributes."""
+        if self._sensor_type == SENSOR_TYPE_TIRE:
+            return self.coordinator.tire_attributes(self._id_name)
         if not (self._sensor_type == SENSOR_TYPE_MOTO and self._id_name == "isConnected"):
             return None
 
@@ -457,7 +459,6 @@ class NiuSensor(SensorEntity):
                 "battery": self.coordinator.get_battery_data("batteryCharging") or 0,
                 "battery_grade": self.coordinator.get_battery_data("gradeBattery") or 0,
                 "centre_ctrl_batt": self.coordinator.get_motor_data("centreCtrlBattery") or 0,
-                "region": self.coordinator.region,
             }
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.debug("获取 %s 的附加属性失败: %s", self._attr_name, err)

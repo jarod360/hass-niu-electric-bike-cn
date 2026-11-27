@@ -9,9 +9,7 @@
   "documentation": "https://github.com/jarod360/hass-niu-ebik-cn",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/jarod360/hass-niu-ebik-cn/issues",
-  "requirements": [
-    "PySocks>=1.7.1"
-  ],
+  "requirements": [],
   "single_config_entry": false,
-  "version": "2.1.0"
+  "version": "2.2.0"
 }
