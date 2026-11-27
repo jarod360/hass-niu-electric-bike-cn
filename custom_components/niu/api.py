@@ -242,6 +242,12 @@ class NiuAPI:
             json={"sn": sn},
         )
 
+    def get_tire_info(self, sn: str, token: str) -> dict[str, Any]:
+        return self._request(
+            "GET", self.api_base_url + "/v5/tire_gauge/realtime",
+            token=token, ua=self._ua_full, params={"sn": sn},
+        )
+
     def get_track_info(self, sn: str, token: str) -> dict[str, Any]:
         return self._request(
             "POST",

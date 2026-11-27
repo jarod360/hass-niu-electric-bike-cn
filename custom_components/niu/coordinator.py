@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 import logging
+import math
 import time
 from time import gmtime, strftime
 from typing import Any
@@ -14,6 +15,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import NiuAPI, NiuAuthError, NiuConnectionError
 from .const import (
+    CONF_MONITORED_VARIABLES,
     CONF_PASSWORD,
     CONF_PROXY,
     CONF_PROXY_PASSWORD,
@@ -22,6 +24,7 @@ from .const import (
     CONF_SCAN_INTERVAL,
     CONF_SCOOTER_ID,
     CONF_USERNAME,
+    DEFAULT_MONITORED_VARIABLES,
     DEFAULT_PROXY,
     DEFAULT_PROXY_PASSWORD,
     DEFAULT_PROXY_USERNAME,
@@ -38,6 +41,8 @@ from .const import (
     SENSOR_TYPE_OVERALL,
     SENSOR_TYPE_POS,
     SENSOR_TYPE_TRACK,
+    SENSOR_TYPE_TIRE,
+    TIRE_SENSORS,
     TOKEN_MAX_AGE,
     get_conf,
     mask_proxy,
@@ -100,6 +105,10 @@ class NiuDataCoordinator(DataUpdateCoordinator):
         self.sn: str | None = None
         self.token: str | None = None
         self._token_ts: float = 0.0
+        self._data_tire: dict[str, Any] = {}
+        self._monitor_tires = bool(set(TIRE_SENSORS).intersection(
+            get_conf(config_entry, CONF_MONITORED_VARIABLES, DEFAULT_MONITORED_VARIABLES)
+        ))
         self._data_bat: dict[str, Any] | None = None
         self._data_moto: dict[str, Any] | None = None
         self._data_moto_info: dict[str, Any] | None = None
@@ -164,12 +173,24 @@ class NiuDataCoordinator(DataUpdateCoordinator):
             self._apply_backoff()
             raise UpdateFailed("NIU 所有数据接口均获取失败")
 
+        if self._monitor_tires:
+            self._data_tire = {}
+            try:
+                result = await self.hass.async_add_executor_job(
+                    self.api.get_tire_info, self.sn, self.token
+                )
+                if isinstance(result, dict) and isinstance(result.get("data"), dict):
+                    self._data_tire = result["data"]
+            except (NiuAuthError, NiuConnectionError, AttributeError):
+                _LOGGER.debug("胎压接口未返回可用数据")
+
         self._reset_backoff()
         return {
             "battery": self._data_bat,
             "motor": self._data_moto,
             "overall": self._data_moto_info,
             "track": self._data_track_info,
+            "tires": self._data_tire,
         }
 
     async def _ensure_session(self) -> None:
@@ -306,6 +327,23 @@ class NiuDataCoordinator(DataUpdateCoordinator):
 
         return latest.get(field)
 
+    def get_tire_data(self, field: str) -> float | None:
+        wheel, _, metric = field.partition(".")
+        tire = self._data_tire.get(wheel)
+        if not isinstance(tire, dict):
+            return None
+        status = tire.get("status")
+        if isinstance(status, dict) and any(status.get(k) in (False, 0) for k in ("paired", "connected")):
+            return None
+        value = tire.get(metric)
+        if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+            return None
+        try:
+            value = float(value)
+        except (ValueError, OverflowError):
+            return None
+        return value if math.isfinite(value) else None
+
     def get_data_by_type(self, sensor_type: str, field: str) -> Any:
         """按传感器分组分发到对应的取数方法。"""
         dispatch = {
@@ -314,6 +352,7 @@ class NiuDataCoordinator(DataUpdateCoordinator):
             SENSOR_TYPE_DIST: self.get_distance_data,
             SENSOR_TYPE_POS: self.get_position_data,
             SENSOR_TYPE_OVERALL: self.get_overall_data,
+            SENSOR_TYPE_TIRE: self.get_tire_data,
             SENSOR_TYPE_TRACK: self.get_track_data,
         }
         getter = dispatch.get(sensor_type)

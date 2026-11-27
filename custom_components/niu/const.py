@@ -102,7 +102,16 @@ SENSOR_TYPE_OVERALL = "TOTAL"
 SENSOR_TYPE_POS = "POSITION"
 SENSOR_TYPE_TRACK = "TRACK"
 
+SENSOR_TYPE_TIRE = "TIRE"
+TIRE_SENSORS = (
+    "FrontTirePressure",
+    "FrontTireTemperature",
+    "RearTirePressure",
+    "RearTireTemperature",
+)
+
 AVAILABLE_SENSORS = [
+    *TIRE_SENSORS,
     "BatteryCharge",
     "Isconnected",
     "TimesCharged",
@@ -132,6 +141,10 @@ AVAILABLE_SENSORS = [
 ]
 
 SENSOR_NAMES_ZH = {
+    "FrontTirePressure": "前轮胎压",
+    "FrontTireTemperature": "前轮胎温",
+    "RearTirePressure": "后轮胎压",
+    "RearTireTemperature": "后轮胎温",
     "BatteryCharge": "电池电量",
     "Isconnected": "连接状态",
     "TimesCharged": "充电次数",
@@ -139,7 +152,7 @@ SENSOR_NAMES_ZH = {
     "Temperature": "电池温度",
     "BatteryGrade": "电池等级",
     "CurrentSpeed": "当前速度",
-    "ScooterConnected": "滑板车连接",
+    "ScooterConnected": "电动车连接",
     "IsCharging": "充电状态",
     "IsLocked": "锁定状态",
     "TimeLeft": "剩余时间",

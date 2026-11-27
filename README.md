@@ -1,4 +1,4 @@
-# Home Assistant NIU 滑板车集成（国内服增强版）
+# Home Assistant NIU 电动车集成（国内服增强版）
 
 用于 Home Assistant 的小牛电动车自定义集成。在 [hasscc/home-assistant-niu-component](https://github.com/hasscc/home-assistant-niu-component) 基础上增加了**区服切换**、**代理支持**和**可配置轮询**，主要面向「车在国内服务器、Home Assistant 在境外」这种部署。
 
@@ -67,8 +67,8 @@ marcelwestrahome/home-assistant-niu-component   ← fork 网络的根，国际�
 ### HACS（推荐）
 
 1. HACS → 集成 → 右上角 ⋯ → Custom repositories
-2. Repository 填 `https://github.com/ivanphz/hass-niu-scooter-cn`，Type 选 `Integration`
-3. ADD → 搜索 `NIU Scooter Integration` → 下载
+2. Repository 填 `https://github.com/jarod360/hass-niu-ebik-cn`，Type 选 `Integration`
+3. ADD → 搜索 `小牛电动车` → 下载
 4. 重启 Home Assistant
 
 ### 手动
@@ -79,12 +79,18 @@ marcelwestrahome/home-assistant-niu-component   ← fork 网络的根，国际�
 
 ---
 
+## 前后轮胎压和胎温
+
+在「设置 → 设备与服务 → 小牛电动车 → 选项」中勾选 `FrontTirePressure`、`RearTirePressure`、`FrontTireTemperature`、`RearTireTemperature`。胎压使用 bar，胎温使用 °C。每个轮询周期只额外查询一次所选车辆，四项共用结果。轮胎离线或缺少读数时，对应实体显示未知。
+
+数据来自小牛 App 的只读车辆接口 `GET /v5/tire_gauge/realtime`，使用已有账号会话和车辆 SN。小牛公开的 [Vehicle Skill](https://github.com/niu-team/niu-vehicle-skills/blob/main/niu-vehicle/SKILL.md) 提供电量、续航、充电、位置和里程等摘要，其字段表未列出胎压和胎温。首次启用时，可在车辆刚上报后对照 App 核对前后轮读数。
+
 ## 配置
 
 | 字段 | 说明 |
 | --- | --- |
 | 用户名/邮箱、密码 | 小牛 App 的账号密码。密码以 MD5 传输，不会明文出网 |
-| 滑板车 ID | 一个账号多辆车时用，从 0 开始 |
+| 电动车 ID | 一个账号多辆车时用，从 0 开始 |
 | **服务器区域** | 国内买的车选「中国大陆」，海外版选「国际」。**账号分服，选错会认证失败** |
 | **代理地址** | 留空即直连。见下方「代理配置」 |
 | **轮询间隔** | 默认 300 秒。不建议低于 120 秒 |

@@ -31,6 +31,7 @@ from .const import (
     SENSOR_TYPE_OVERALL,
     SENSOR_TYPE_POS,
     SENSOR_TYPE_TRACK,
+    SENSOR_TYPE_TIRE,
     get_conf,
 )
 from .coordinator import NiuDataCoordinator
@@ -42,6 +43,22 @@ a = 6378245.0  # 长半轴
 _LOGGER = logging.getLogger(__name__)
 
 SENSOR_TYPES = {
+    "FrontTirePressure": [
+        "front_tire_pressure", "bar", "front.pressure", SENSOR_TYPE_TIRE,
+        SensorDeviceClass.PRESSURE, "mdi:gauge", SensorStateClass.MEASUREMENT,
+    ],
+    "FrontTireTemperature": [
+        "front_tire_temperature", "°C", "front.temperature", SENSOR_TYPE_TIRE,
+        SensorDeviceClass.TEMPERATURE, "mdi:thermometer", SensorStateClass.MEASUREMENT,
+    ],
+    "RearTirePressure": [
+        "rear_tire_pressure", "bar", "rear.pressure", SENSOR_TYPE_TIRE,
+        SensorDeviceClass.PRESSURE, "mdi:gauge", SensorStateClass.MEASUREMENT,
+    ],
+    "RearTireTemperature": [
+        "rear_tire_temperature", "°C", "rear.temperature", SENSOR_TYPE_TIRE,
+        SensorDeviceClass.TEMPERATURE, "mdi:thermometer", SensorStateClass.MEASUREMENT,
+    ],
     "BatteryCharge": [
         "battery_charge",
         "%",
