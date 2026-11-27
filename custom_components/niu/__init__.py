@@ -12,6 +12,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
+from .const import VEHICLE_TITLE
 from .coordinator import NiuDataCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,6 +38,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: MyConfigEntry) ->
 
     if coordinator.last_update_success is False:
         raise ConfigEntryNotReady
+
+    if config_entry.title.startswith(("NIU Scooter - ", "小牛电动车 - ", f"{VEHICLE_TITLE} - ")):
+        nickname = coordinator.vehicle_name or config_entry.title.partition(" - ")[2]
+        title = f"{VEHICLE_TITLE} - {nickname}"
+        if config_entry.title != title:
+            hass.config_entries.async_update_entry(config_entry, title=title)
 
     config_entry.async_on_unload(
         config_entry.add_update_listener(_async_update_listener)

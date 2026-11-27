@@ -35,6 +35,7 @@ from .const import (
     SENSOR_TYPE_TIRE,
     TIRE_SENSORS,
     TOKEN_MAX_AGE,
+    VEHICLE_TITLE,
     get_conf,
 )
 
@@ -59,7 +60,7 @@ class NiuDataCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass,
             _LOGGER,
-            name="NIU Scooter",
+            name=VEHICLE_TITLE,
             update_interval=timedelta(seconds=interval),
         )
 
@@ -73,6 +74,7 @@ class NiuDataCoordinator(DataUpdateCoordinator):
             config_entry.data[CONF_PASSWORD],
         )
 
+        self.vehicle_name: str | None = None
         self.sn: str | None = None
         self.token: str | None = None
         self._token_ts: float = 0.0
@@ -183,7 +185,11 @@ class NiuDataCoordinator(DataUpdateCoordinator):
             raise NiuConnectionError(
                 f"滑板车 ID {scooter_id} 超出范围（账号下共 {len(items)} 辆）"
             )
-        self.sn = items[scooter_id]["sn_id"]
+        vehicle = items[scooter_id]
+        self.sn = vehicle["sn_id"]
+        vehicle_name = vehicle.get("scooter_name")
+        if isinstance(vehicle_name, str) and vehicle_name.strip():
+            self.vehicle_name = vehicle_name.strip()
 
     async def _fetch_all(self) -> int:
         """拉取四个数据接口，返回成功的个数。

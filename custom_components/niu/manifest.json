@@ -6,10 +6,10 @@
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/jarod360/hass-niu-ebik-cn",
+  "documentation": "https://github.com/jarod360/hass-niu-electric-bike-cn",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/jarod360/hass-niu-ebik-cn/issues",
+  "issue_tracker": "https://github.com/jarod360/hass-niu-electric-bike-cn/issues",
   "requirements": [],
   "single_config_entry": false,
-  "version": "2.2.0"
+  "version": "2.2.1"
 }

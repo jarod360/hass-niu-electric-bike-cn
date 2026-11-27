@@ -31,6 +31,7 @@ from .const import (
     DOMAIN,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
+    VEHICLE_TITLE,
     get_conf,
 )
 
@@ -106,15 +107,19 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
         items = vehicles["data"]["items"]
         scooter_id = data.get(CONF_SCOOTER_ID, DEFAULT_SCOOTER_ID)
-        if scooter_id >= len(items):
+        if not 0 <= scooter_id < len(items):
             raise NiuConnectionError(
-                f"滑板车 ID {scooter_id} 超出范围（账号下共 {len(items)} 辆）"
+                f"电动车序号 {scooter_id} 超出范围（账号下共 {len(items)} 辆）"
             )
 
-        scooter_name = items[scooter_id]["scooter_name"]
+        scooter_name = items[scooter_id].get("scooter_name")
+        if not isinstance(scooter_name, str) or not scooter_name.strip():
+            scooter_name = str(scooter_id)
+        else:
+            scooter_name = scooter_name.strip()
 
         return {
-            "title": f"小牛电动车 - {scooter_name}",
+            "title": f"{VEHICLE_TITLE} - {scooter_name}",
             "token": token,
             "scooter_id": scooter_id,
             "scooter_name": scooter_name,

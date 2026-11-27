@@ -1,4 +1,4 @@
-"""Support for NIU Scooters sensors."""
+"""Support for NIU electric bike sensors."""
 
 from __future__ import annotations
 
@@ -373,7 +373,7 @@ class NiuSensor(SensorEntity):
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"niu_scooter_{scooter_id}_{coordinator.sn}")},
-            name=f"小牛电动车 {scooter_id}",
+            name=coordinator.vehicle_name or f"小牛电动车 {scooter_id}",
             manufacturer="NIU",
             model="电动车",
             configuration_url=ACCOUNT_BASE_URL,
